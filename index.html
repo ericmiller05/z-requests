@@ -108,6 +108,7 @@
   var API = API_BASE + '?k=' + encodeURIComponent(KEY);
   var state = { v: 1, requests: [] };
   var loaded = false, badKey = !KEY, filter = 'open', busy = false;
+  try { if (localStorage.getItem('zr-who')) filter = 'mine'; } catch (e) {}
   var draft = { who: null, text: '', emailMe: true };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -167,7 +168,7 @@
   function render() {
     var app = document.getElementById('app');
     var open = state.requests.filter(function (r) { return !r.archived; });
-    var shown = open.filter(function (r) { return filter === 'all' ? true : filter === 'mine' ? r.who === draft.who : r.status !== 'done'; });
+    var shown = filter === 'archived' ? state.requests.filter(function (r) { return r.archived && (!draft.who || r.who === draft.who); }) : open.filter(function (r) { return filter === 'all' ? true : filter === 'mine' ? r.who === draft.who : r.status !== 'done'; });
     var nQ = open.filter(function (r) { return r.status === 'queued' || r.status === 'working'; }).length;
     var h = '';
     h += '<div class="wrap">';
@@ -179,9 +180,9 @@
     h += '<textarea id="zr-text" placeholder="What do you need? Links, dates, episode numbers and pasted text all work here.">' + esc(draft.text) + '</textarea>';
     h += '<div class="row"><label class="check"><input type="checkbox" id="zr-email"' + (draft.emailMe ? ' checked' : '') + '> Email me the result</label>';
     h += '<button class="btn btn-primary" id="zr-send" type="button"' + (badKey ? ' disabled' : '') + '>SEND TO CLAUDE</button></div>';
-    h += '<div class="hint">The result shows up on this page under your request. Reply on the card to tweak it. Graphics, video, and anything that publishes get flagged to Eric instead.</div></div>';
-    h += '<div class="board-head"><div class="card-label">REQUESTS</div><div class="filters">' + [['open', 'OPEN'], ['mine', 'MINE'], ['all', 'ALL']].map(function (f) { return '<button class="btn btn-sm" type="button" data-filter="' + f[0] + '" aria-pressed="' + (filter === f[0]) + '">' + f[1] + '</button>'; }).join('') + '</div></div>';
-    if (!shown.length) h += '<div class="empty">' + (!loaded && !badKey ? 'LOADING…' : filter === 'mine' && !draft.who ? 'PICK YOUR NAME ABOVE' : 'NOTHING HERE YET') + '</div>';
+    h += '<div class="hint">The result shows up on this page under your request. Reply on the card to tweak it. MINE keeps everything you have sent, including finished ones; ARCHIVED holds what you have cleared. Graphics, video, and anything that publishes get flagged to Eric instead.</div></div>';
+    h += '<div class="board-head"><div class="card-label">REQUESTS</div><div class="filters">' + [['open', 'OPEN'], ['mine', 'MINE'], ['all', 'ALL'], ['archived', 'ARCHIVED']].map(function (f) { return '<button class="btn btn-sm" type="button" data-filter="' + f[0] + '" aria-pressed="' + (filter === f[0]) + '">' + f[1] + '</button>'; }).join('') + '</div></div>';
+    if (!shown.length) h += '<div class="empty">' + (!loaded && !badKey ? 'LOADING…' : filter === 'mine' && !draft.who ? 'PICK YOUR NAME ABOVE' : filter === 'archived' ? 'NOTHING ARCHIVED' : filter === 'mine' ? 'NOTHING FROM YOU YET' : 'NOTHING HERE YET') + '</div>';
     shown.forEach(function (r) {
       h += '<div class="card req" data-id="' + r.id + '"><div class="req-top"><span class="status s-' + r.status + '">' + (STATUS[r.status] || r.status.toUpperCase()) + '</span><span class="req-who">' + esc(r.who) + '</span><span class="req-time">' + fmt(r.created) + '</span></div>';
       h += '<div class="req-text">' + linkify(r.text) + '</div>';
@@ -190,7 +191,7 @@
       h += '<div class="req-actions">';
       h += '<div class="reply-box" style="flex:1 1 260px"><input type="text" placeholder="Reply — shorter, add X, redo with Y…" data-reply="' + r.id + '"><button class="btn btn-sm" type="button" data-send-reply="' + r.id + '">SEND</button></div>';
       if (r.result) h += (r.emailMe && !r.emailSent ? '<span class="mail-note">EMAILING TO ' + esc(r.email).toUpperCase() + '</span>' : r.emailSent ? '<span class="mail-note">EMAILED</span>' : '<button class="btn btn-sm" type="button" data-email="' + r.id + '">EMAIL ME THIS</button>');
-      h += '<button class="btn btn-sm" type="button" data-archive="' + r.id + '">ARCHIVE</button>';
+      if (!r.archived) h += '<button class="btn btn-sm" type="button" data-archive="' + r.id + '">ARCHIVE</button>';
       h += '</div></div>';
     });
     h += '<div class="ftr"><span>WORKED BY CLAUDE ON ERIC\'S ACCOUNT · REPLIES AS ERIC</span><span>' + open.length + ' OPEN · ' + state.requests.length + ' TOTAL</span></div>';
