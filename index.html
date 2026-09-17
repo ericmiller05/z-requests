@@ -88,6 +88,7 @@
   var NAMES = ['Mary', 'Julia', 'Cody', 'Eric'];
   var KINDS = [
     ['YT DESCRIPTION', 'YouTube description for this video: <paste link, or say "this morning\'s live">'],
+    ['EDIT YT DESCRIPTION', 'Edit the description for this video: <paste link or title>\nChange: <what to change, or paste the corrected text below>\n\n'],
     ['BLOG', 'Blog post from this broadcast: <date, or paste the transcript below>\n\n'],
     ['TV TITLES + DESC', 'Titles and description entry for episode <number or date>'],
     ['SUMMARY', 'Summary and key points from the <date> broadcast. Include the scripture references and 3 quotes.'],
@@ -153,7 +154,7 @@
     var who = draft.who, text = (draft.text || '').trim();
     if (!who) { toast('Pick your name first.'); return; }
     if (text.length < 8) { toast('Say a bit more about what you need.'); return; }
-    api({ op: 'submit', who: who, text: text, emailMe: !!draft.emailMe }, 'Sent. Claude picks it up within 30 minutes (6a–7:30p).', { who: who, text: text, emailMe: draft.emailMe });
+    api({ op: 'submit', who: who, text: text, emailMe: !!draft.emailMe }, 'Sent. It is picked up within the hour (6a–7p).', { who: who, text: text, emailMe: draft.emailMe });
   }
   function reply(id, text) {
     text = (text || '').trim(); if (!text) return;
@@ -172,14 +173,14 @@
     var nQ = open.filter(function (r) { return r.status === 'queued' || r.status === 'working'; }).length;
     var h = '';
     h += '<div class="wrap">';
-    h += '<div class="hdr"><div class="hdr-left"><div class="zmark">Z</div><div><div class="brand">Z REQUESTS</div><div class="brand-sub">MEDIA TEAM · CLAUDE LANE</div></div></div>';
+    h += '<div class="hdr"><div class="hdr-left"><div class="zmark">Z</div><div><div class="brand">Z REQUESTS</div><div class="brand-sub">MEDIA TEAM · CODEX LANE</div></div></div>';
     h += '<div class="live"><span class="live-dot"></span>SWEEP EVERY 30 MIN · 6A–7:30P MT' + (nQ ? ' · ' + nQ + ' IN QUEUE' : '') + '</div></div>';
     if (badKey) h += '<div class="notice">This link isn\'t valid. Open the exact link Eric sent you (it ends in a long code), or ask him for a fresh one.</div>';
     h += '<div class="card paper"><div class="card-head"><div class="card-label">NEW REQUEST</div><div class="kinds">' + KINDS.map(function (k, i) { return '<button class="kind" data-kind="' + i + '" type="button">' + k[0] + '</button>'; }).join('') + '</div></div>';
     h += '<div class="who">' + NAMES.map(function (n) { return '<button class="chip" type="button" data-who="' + n + '" aria-pressed="' + (draft.who === n) + '">' + n + '</button>'; }).join('') + '</div>';
     h += '<textarea id="zr-text" placeholder="What do you need? Links, dates, episode numbers and pasted text all work here.">' + esc(draft.text) + '</textarea>';
     h += '<div class="row"><label class="check"><input type="checkbox" id="zr-email"' + (draft.emailMe ? ' checked' : '') + '> Email me the result</label>';
-    h += '<button class="btn btn-primary" id="zr-send" type="button"' + (badKey ? ' disabled' : '') + '>SEND TO CLAUDE</button></div>';
+    h += '<button class="btn btn-primary" id="zr-send" type="button"' + (badKey ? ' disabled' : '') + '>SEND</button></div>';
     h += '<div class="hint">The result shows up on this page under your request. Reply on the card to tweak it. MINE keeps everything you have sent, including finished ones; ARCHIVED holds what you have cleared. Graphics, video, and anything that publishes get flagged to Eric instead.</div></div>';
     h += '<div class="board-head"><div class="card-label">REQUESTS</div><div class="filters">' + [['open', 'OPEN'], ['mine', 'MINE'], ['all', 'ALL'], ['archived', 'ARCHIVED']].map(function (f) { return '<button class="btn btn-sm" type="button" data-filter="' + f[0] + '" aria-pressed="' + (filter === f[0]) + '">' + f[1] + '</button>'; }).join('') + '</div></div>';
     if (!shown.length) h += '<div class="empty">' + (!loaded && !badKey ? 'LOADING…' : filter === 'mine' && !draft.who ? 'PICK YOUR NAME ABOVE' : filter === 'archived' ? 'NOTHING ARCHIVED' : filter === 'mine' ? 'NOTHING FROM YOU YET' : 'NOTHING HERE YET') + '</div>';
@@ -194,7 +195,7 @@
       if (!r.archived) h += '<button class="btn btn-sm" type="button" data-archive="' + r.id + '">ARCHIVE</button>';
       h += '</div></div>';
     });
-    h += '<div class="ftr"><span>WORKED BY CLAUDE ON ERIC\'S ACCOUNT · REPLIES AS ERIC</span><span>' + open.length + ' OPEN · ' + state.requests.length + ' TOTAL</span></div>';
+    h += '<div class="ftr"><span>WORKED BY CODEX ON ERIC\'S ACCOUNT · REPLIES AS ERIC</span><span>' + open.length + ' OPEN · ' + state.requests.length + ' TOTAL</span></div>';
     h += '</div>';
     app.innerHTML = h;
 
