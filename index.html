@@ -111,6 +111,7 @@
   var loaded = false, badKey = !KEY, filter = 'open', busy = false;
   try { if (localStorage.getItem('zr-who')) filter = 'mine'; } catch (e) {}
   var draft = { who: null, text: '', emailMe: true };
+  var replyDrafts = {};   // unsent reply text per request id, kept across re-renders
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function linkify(s) { return esc(s).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'); }
@@ -130,7 +131,8 @@
         if (res.status === 404 && !res.j.error) { badKey = true; render(); return; }
         if (!res.ok || !res.j.state) { toast(res.j.error || ('Could not send (' + res.status + '). Try again.')); return; }
         try { sessionStorage.removeItem('zr-draft'); } catch (e) {}
-        if (body.op === 'submit') draft.text = '';
+        if (body.op === 'submit' && draft.text.trim() === body.text) draft.text = '';   // keep text typed while the send was in flight
+        if (body.op === 'reply' && (replyDrafts[body.id] || '').trim() === body.text) delete replyDrafts[body.id];
         state = res.j.state; loaded = true; render(); toast(okMsg);
       })
       .catch(function () { busy = false; toast('No connection. Try again.'); });
@@ -190,7 +192,7 @@
       if (r.thread && r.thread.length) h += '<div class="thread">' + r.thread.map(function (m) { return '<div class="msg"><b>' + esc(m.from) + '</b><span class="at">' + fmt(m.at) + '</span><br>' + linkify(m.text) + '</div>'; }).join('') + '</div>';
       if (r.result) h += '<div class="result"><div class="result-label">RESULT' + (r.resultAt ? ' · ' + fmt(r.resultAt) : '') + '</div>' + linkify(r.result) + '</div>';
       h += '<div class="req-actions">';
-      h += '<div class="reply-box" style="flex:1 1 260px"><input type="text" placeholder="Reply — shorter, add X, redo with Y…" data-reply="' + r.id + '"><button class="btn btn-sm" type="button" data-send-reply="' + r.id + '">SEND</button></div>';
+      h += '<div class="reply-box" style="flex:1 1 260px"><input type="text" placeholder="Reply — shorter, add X, redo with Y…" value="' + esc(replyDrafts[r.id] || '') + '" data-reply="' + r.id + '"><button class="btn btn-sm" type="button" data-send-reply="' + r.id + '">SEND</button></div>';
       if (r.result) h += (r.emailMe && !r.emailSent ? '<span class="mail-note">EMAILING TO ' + esc(r.email).toUpperCase() + '</span>' : r.emailSent ? '<span class="mail-note">EMAILED</span>' : '<button class="btn btn-sm" type="button" data-email="' + r.id + '">EMAIL ME THIS</button>');
       if (!r.archived) h += '<button class="btn btn-sm" type="button" data-archive="' + r.id + '">ARCHIVE</button>';
       h += '</div></div>';
@@ -206,7 +208,7 @@
     document.getElementById('zr-email').onchange = function (e) { draft.emailMe = e.target.checked; };
     document.getElementById('zr-send').onclick = function () { draft.text = document.getElementById('zr-text').value; submit(); };
     app.querySelectorAll('[data-send-reply]').forEach(function (b) { b.onclick = function () { var id = b.getAttribute('data-send-reply'); reply(id, app.querySelector('[data-reply="' + id + '"]').value); }; });
-    app.querySelectorAll('[data-reply]').forEach(function (i) { i.onkeydown = function (e) { if (e.key === 'Enter') { reply(i.getAttribute('data-reply'), i.value); } }; });
+    app.querySelectorAll('[data-reply]').forEach(function (i) { i.onkeydown = function (e) { if (e.key === 'Enter') { reply(i.getAttribute('data-reply'), i.value); } }; i.oninput = function () { replyDrafts[i.getAttribute('data-reply')] = i.value; }; });
     app.querySelectorAll('[data-email]').forEach(function (b) { b.onclick = function () { askEmail(b.getAttribute('data-email')); }; });
     app.querySelectorAll('[data-archive]').forEach(function (b) { b.onclick = function () { archive(b.getAttribute('data-archive')); }; });
   }
@@ -215,6 +217,7 @@
     var st = JSON.parse(sessionStorage.getItem('zr-draft') || 'null');
     if (st) {
       if (st.who) { draft.who = st.who; draft.text = st.text || ''; draft.emailMe = st.emailMe !== false; }
+      if (st.reply && st.reply.id) { replyDrafts[st.reply.id] = st.reply.text || ''; }   // a reply whose send failed comes back into its box
       sessionStorage.removeItem('zr-draft');
       setTimeout(function () { toast('Your last send may not have gone through — check the list, then send again if it\'s missing.'); }, 600);
     }
